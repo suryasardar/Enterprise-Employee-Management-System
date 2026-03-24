@@ -7,3 +7,4 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeProfile
         fields = '__all__'
+        
