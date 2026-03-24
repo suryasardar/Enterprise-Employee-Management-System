@@ -31,6 +31,7 @@ def update_employee_status(request, emp_id):
         return Response({"error": "Unauthorized"}, status=403)
 
     try:
+        print(EmployeeProfile.objects.all())
         profile = EmployeeProfile.objects.get(employee_id=emp_id)
     except EmployeeProfile.DoesNotExist:
         return Response({"error": "Employee not found"}, status=404)
