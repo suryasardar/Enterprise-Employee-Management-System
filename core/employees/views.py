@@ -1,66 +1,157 @@
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q
+
+from accounts.permissions import IsAdminOrHR, IsAdminHROrManager
 from .models import EmployeeProfile
-from .serializers import EmployeeProfileSerializer
-from audit.models import AuditLog
+from .serializers import (
+    EmployeeProfileSerializer, CreateEmployeeSerializer,
+    UpdateEmployeeSerializer, EmployeeProfileCardSerializer
+)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_profile(request):
-    """Admin/HR creates the extended profile for a User"""
-    if request.user.role not in ['Admin', 'HR']:
-        return Response({"error": "Unauthorized"}, status=403)
-    
-    serializer = EmployeeProfileSerializer(data=request.data)
-    if serializer.is_valid():
-        profile = serializer.save()
-        AuditLog.objects.create(
-            user=request.user,
-            action="PROFILE_CREATE",
-            description=f"Created profile for Employee ID: {profile.employee_id}"
-        )
-        return Response(serializer.data, status=201)
-    return Response(serializer.errors, status=400)
 
-@api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
-def update_employee_status(request, emp_id):
-    """Handles Status Updates, Transfers, and Terminations"""
-    if request.user.role not in ['Admin', 'HR']:
-        return Response({"error": "Unauthorized"}, status=403)
+class EmployeeListCreateView(APIView):
+    """
+    GET  /api/employees/       — list all (Admin, HR, Manager)
+    POST /api/employees/       — create new employee (Admin, HR)
+    """
 
-    try:
-        print(EmployeeProfile.objects.all())
-        profile = EmployeeProfile.objects.get(employee_id=emp_id)
-    except EmployeeProfile.DoesNotExist:
-        return Response({"error": "Employee not found"}, status=404)
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsAdminOrHR()]
+        return [IsAuthenticated(), IsAdminHROrManager()]
 
-    # Logic for Department Transfer
-    new_dept = request.data.get("department")
-    if new_dept and new_dept != profile.department:
-        old_dept = profile.department
-        profile.department = new_dept
-        AuditLog.objects.create(
-            user=request.user,
-            action="DEPT_TRANSFER",
-            description=f"Transferred {emp_id} from {old_dept} to {new_dept}"
-        )
+    def get(self, request):
+        page      = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        start     = (page - 1) * page_size
+        end       = start + page_size
 
-    # Logic for Termination
-    new_status = request.data.get("status")
-    if new_status:
-        profile.status = new_status
-        if new_status == "Terminated":
-            # Set associated User to inactive so they can't login
-            profile.user.is_active = False
-            profile.user.save()
-        
-        AuditLog.objects.create(
-            user=request.user,
-            action="STATUS_CHANGE",
-            description=f"Changed status of {emp_id} to {new_status}"
-        )
+        employees = EmployeeProfile.objects.select_related('user', 'reporting_manager')
+        total     = employees.count()
+        serializer = EmployeeProfileSerializer(employees[start:end], many=True)
 
-    profile.save()
-    return Response({"message": "Employee updated successfully"})
+        return Response({
+            'count':   total,
+            'page':    page,
+            'results': serializer.data,
+        })
+
+    def post(self, request):
+        serializer = CreateEmployeeSerializer(data=request.data)
+        if serializer.is_valid():
+            profile = serializer.save()
+            return Response(
+                EmployeeProfileSerializer(profile).data,
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EmployeeDetailView(APIView):
+    """
+    GET   /api/employees/{id}/  — Admin, HR, Manager
+    PUT   /api/employees/{id}/  — Admin, HR
+    PATCH /api/employees/{id}/  — Admin, HR
+    """
+
+    def get_object(self, pk):
+        try:
+            return EmployeeProfile.objects.select_related('user').get(pk=pk)
+        except EmployeeProfile.DoesNotExist:
+            return None
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated(), IsAdminHROrManager()]
+        return [IsAuthenticated(), IsAdminOrHR()]
+
+    def get(self, request, pk):
+        employee = self.get_object(pk)
+        if not employee:
+            return Response({'detail': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(EmployeeProfileSerializer(employee).data)
+
+    def put(self, request, pk):
+        employee = self.get_object(pk)
+        if not employee:
+            return Response({'detail': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = UpdateEmployeeSerializer(employee, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(EmployeeProfileSerializer(employee).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        employee = self.get_object(pk)
+        if not employee:
+            return Response({'detail': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = UpdateEmployeeSerializer(employee, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(EmployeeProfileSerializer(employee).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EmployeeTerminateView(APIView):
+    """DELETE /api/employees/{id}/ — Admin, HR (soft delete → Terminated)"""
+    permission_classes = [IsAuthenticated, IsAdminOrHR]
+
+    def delete(self, request, pk):
+        try:
+            employee = EmployeeProfile.objects.get(pk=pk)
+        except EmployeeProfile.DoesNotExist:
+            return Response({'detail': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        employee.status = 'Terminated'
+        employee.save()
+        employee.user.is_active = False
+        employee.user.save()
+        return Response({'detail': f'Employee {employee.employee_id} has been terminated.'})
+
+
+class EmployeeProfileCardView(APIView):
+    """GET /api/employees/{id}/profile/ — All authenticated"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        # Employees can only view their own profile card
+        if request.user.role == 'Employee':
+            try:
+                employee = EmployeeProfile.objects.get(user=request.user)
+                if employee.pk != int(pk):
+                    return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+            except EmployeeProfile.DoesNotExist:
+                return Response({'detail': 'Profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            try:
+                employee = EmployeeProfile.objects.select_related('user').get(pk=pk)
+            except EmployeeProfile.DoesNotExist:
+                return Response({'detail': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(EmployeeProfileCardSerializer(employee).data)
+
+
+class EmployeeSearchView(APIView):
+    """GET /api/employees/search/?q=&dept= — Admin, HR, Manager"""
+    permission_classes = [IsAuthenticated, IsAdminHROrManager]
+
+    def get(self, request):
+        query      = request.query_params.get('q', '').strip()
+        department = request.query_params.get('dept', '').strip()
+
+        employees = EmployeeProfile.objects.select_related('user')
+
+        if query:
+            employees = employees.filter(
+                Q(user__username__icontains=query) |
+                Q(user__email__icontains=query)    |
+                Q(employee_id__icontains=query)
+            )
+        if department:
+            employees = employees.filter(department__icontains=department)
+
+        serializer = EmployeeProfileSerializer(employees, many=True)
+        return Response({'count': employees.count(), 'results': serializer.data})

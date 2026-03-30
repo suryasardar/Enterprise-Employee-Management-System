@@ -23,13 +23,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 from datetime import timedelta
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY =os.getenv('SECRET_KEY')
+# SECRET_KEY =os.getenv('SECRET_KEY')
+SECRET_KEY = 'django-insecure-wv^c#!nqw7z-k%9-@*--b*tnsr!!c7k+x+#z5qd5u&x8vdn=!%'
+# print(SECRET_KEY, "This is the secret key from settings.py")
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -49,6 +51,7 @@ INSTALLED_APPS = [
     'payroll',
     'audit',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
      'corsheaders',  # Add this line for CORS
 ]
 
@@ -62,6 +65,8 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'ROTATE_REFRESH_TOKENS': True,       # <-- add
+    'BLACKLIST_AFTER_ROTATION': True,    # <-- add
 }
 
 MIDDLEWARE = [
@@ -77,7 +82,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
+    "http://localhost:4000",
     "http://127.0.0.1:3000",
     "http://localhost:5173", # Standard for Vite/React
 ]
@@ -107,11 +112,16 @@ AUTH_USER_MODEL = 'accounts.User'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+        # 'NAME': os.getenv('DB_NAME'),
+        # 'USER': os.getenv('DB_USER'),
+        # 'PASSWORD': os.getenv('DB_PASSWORD'),
+        # 'HOST': os.getenv('DB_HOST'),
+        # 'PORT': os.getenv('DB_PORT'),
+        'NAME': 'EmployeeManagement',
+        'USER': 'root',
+        'PASSWORD': 'Mahesh@123',
+        'HOST': 'localhost',
+        'PORT': '3306', 
     }
 }
 
