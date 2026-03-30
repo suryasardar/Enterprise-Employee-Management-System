@@ -1,51 +1,90 @@
-from rest_framework.decorators import api_view
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.contrib.auth.hashers import check_password
-from django.contrib.auth.hashers import make_password
-from .models import User
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserSerializer
-from audit.models import AuditLog
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import permission_classes
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.views import TokenRefreshView
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated]) # This ensures JWT is checked first
-def register_user(request):
-    # Check permission (Ideally move this to a custom Permission Class later)
-    # For now, we still rely on the token of the person making the request
-    if not request.user.is_authenticated or request.user.role not in ["Admin", "HR"]:
-        return Response({"error": "Only Admin or HR can register users"}, status=403)
+from .models import User
+from .serializers import (
+    RegisterSerializer, LoginSerializer,
+    ChangePasswordSerializer, ResetPasswordSerializer, UserSerializer
+)
+from .permissions import IsAdminOrHR
 
-    serializer = UserSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({"message": "User created successfully"}, status=201)
-    return Response(serializer.errors, status=400)
 
-@api_view(["POST"])
-def login_user(request):
-    username = request.data.get("username")
-    password = request.data.get("password")
+class RegisterView(APIView):
+    """POST /api/auth/register/ — Admin, HR only"""
+    permission_classes = [IsAuthenticated, IsAdminOrHR]
 
-    # Use Django's authenticate for better security/logging
-    from django.contrib.auth import authenticate
-    user = authenticate(username=username, password=password)
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(
+                UserSerializer(user).data,
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    if user is not None:
-        refresh = RefreshToken.for_user(user)
-        
-        # Log the successful login
-        AuditLog.objects.create(
-            user=user,
-            action="LOGIN",
-            description=f"User {username} logged in successfully"
-        )
 
-        return Response({
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-            "role": user.role
-        })
-    
-    return Response({"error": "Invalid credentials"}, status=401)
+class LoginView(APIView):
+    """POST /api/auth/login/ — All"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'access':  str(refresh.access_token),
+                'refresh': str(refresh),
+                'user':    UserSerializer(user).data,
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LogoutView(APIView):
+    """POST /api/auth/logout/ — All (blacklists refresh token)"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh')
+            if not refresh_token:
+                return Response(
+                    {'detail': 'Refresh token is required.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({'detail': 'Logged out successfully.'}, status=status.HTTP_200_OK)
+        except TokenError:
+            return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ChangePasswordView(APIView):
+    """POST /api/auth/change-password/ — All (authenticated)"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'detail': 'Password changed successfully.'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordView(APIView):
+    """POST /api/auth/reset-password/ — All (no auth needed)"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            # Hook: send reset email here (e.g. Django send_mail / Celery task)
+            # user = User.objects.get(email=serializer.validated_data['email'])
+            return Response({'detail': 'Password reset email sent (if account exists).'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

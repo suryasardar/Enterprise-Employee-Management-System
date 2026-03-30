@@ -1,24 +1,32 @@
 """
-URL configuration for core project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+URL configuration for EmployeeManagement project.
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
+    # Admin panel
     path('admin/', admin.site.urls),
-    path('api/accounts/', include('accounts.urls')),
+    
+    # API endpoints
+    path('api/auth/', include('accounts.urls')),
     path('api/employees/', include('employees.urls')),
+    
+    # Add other app URLs here as you implement them
+    # path('api/attendance/', include('attendance.urls')),
+    # path('api/leave/', include('leave_management.urls')),
+    # path('api/payroll/', include('payroll.urls')),
+    # path('api/audit/', include('audit.urls')),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Customize admin site
+admin.site.site_header = "HRMS Administration"
+admin.site.site_title = "HRMS Admin Portal"
+admin.site.index_title = "Welcome to HRMS Admin Portal"
