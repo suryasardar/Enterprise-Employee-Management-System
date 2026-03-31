@@ -46,8 +46,8 @@ export default function EmployeeSearchPage() {
                   {emp.first_name?.[0]}{emp.last_name?.[0]}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-800 truncate">{emp.first_name} {emp.last_name}</p>
-                  <p className="text-xs text-slate-400 truncate">{emp.email}</p>
+                  <p className="font-semibold text-slate-800 truncate">{emp?.username}</p>
+                  <p className="text-xs text-slate-400 truncate">{emp?.user?.email}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs text-slate-500">{emp.department}</span>

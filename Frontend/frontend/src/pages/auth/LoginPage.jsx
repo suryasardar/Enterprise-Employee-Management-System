@@ -2,28 +2,47 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Input, Alert } from '../../components/ui';
-import { Mail, Lock, Building2 } from 'lucide-react';
+import { UserCircle, Lock, Building2 } from 'lucide-react';
+
+const ROLE_DASHBOARD = {
+  Admin:  '/dashboard',
+  HR:  '/dashboard',
+  Manager:  '/dashboard',
+  Employee: '/dashboard',
+};
 
 export default function LoginPage() {
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm]       = useState({ login: '', password: '' });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const [error, setError]     = useState('');
+  const { login }             = useAuth();
+  const navigate              = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      await login(form);
-      navigate('/dashboard');
+      const data       = await login(form);
+      const role       = data?.user?.role;
+      const redirectTo = ROLE_DASHBOARD[role] || '/dashboard';
+      navigate(redirectTo);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid credentials. Please try again.');
+      const errData = err.response?.data;
+      const message =
+        typeof errData === 'object'
+          ? Object.values(errData).flat().join(' ')
+          : 'Login failed. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
+
+  // Detect if user is typing an email
+  const isEmail     = form.login.includes('@');
+  const placeholder = isEmail ? 'you@company.com' : 'your_username';
+  const inputLabel  = 'Username or Email';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 flex items-center justify-center p-4">
@@ -49,12 +68,12 @@ export default function LoginPage() {
             <Alert message={error} type="error" />
 
             <Input
-              label={<span className="text-blue-100">Email Address</span>}
-              type="email"
-              placeholder="you@company.com"
-              icon={Mail}
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              label={<span className="text-blue-100">{inputLabel}</span>}
+              type="text"
+              placeholder={placeholder}
+              icon={UserCircle}
+              value={form.login}
+              onChange={(e) => setForm({ ...form, login: e.target.value })}
               required
               className="bg-white/10 border-white/20 text-white placeholder-blue-300 focus:border-blue-300"
             />
@@ -71,7 +90,10 @@ export default function LoginPage() {
             />
 
             <div className="flex justify-end">
-              <Link to="/reset-password" className="text-xs text-blue-300 hover:text-white transition-colors">
+              <Link
+                to="/reset-password"
+                className="text-xs text-blue-300 hover:text-white transition-colors"
+              >
                 Forgot password?
               </Link>
             </div>
@@ -80,6 +102,12 @@ export default function LoginPage() {
               Sign In
             </Button>
           </form>
+
+          {/* Hint text */}
+          <p className="text-center text-blue-300/60 text-xs mt-6">
+            You can sign in using your <span className="text-blue-300">username</span> or <span className="text-blue-300">email address</span>
+          </p>
+          
         </div>
       </div>
     </div>

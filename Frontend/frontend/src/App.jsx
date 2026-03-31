@@ -35,7 +35,7 @@ export default function App() {
           </Route>
 
           {/* Admin & HR only */}
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'hr']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['Admin', 'HR']} />}>
             <Route element={<MainLayout />}>
               <Route path="/employees/new" element={<EmployeeFormPage />} />
               <Route path="/employees/:id/edit" element={<EmployeeFormPage />} />

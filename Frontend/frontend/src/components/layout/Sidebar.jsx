@@ -11,6 +11,7 @@ const navItems = [
   { to: '/employees/new', icon: UserPlus, label: 'Add Employee' },
   { to: '/employees/search', icon: Search, label: 'Search' },
   { to: '/settings', icon: Settings, label: 'Settings' },
+  {to :'/register', icon: UserPlus, label: 'Register User'},
 ];
 
 export default function Sidebar() {
