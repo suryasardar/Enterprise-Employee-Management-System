@@ -32,6 +32,8 @@ export default function EmployeeDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  console.log(employee?.user?.email,"surya");
+
   const handleTerminate = async () => {
     if (window.confirm('Terminate this employee?')) {
       await employeesAPI.terminate(id);
@@ -61,7 +63,7 @@ export default function EmployeeDetailPage() {
                 <Badge variant={employee.is_active !== false ? 'green' : 'red'}>
                   {employee.is_active !== false ? 'Active' : 'Terminated'}
                 </Badge>
-                <Badge variant="blue">{employee.role}</Badge>
+                <Badge variant="blue">{employee?.user?.role}</Badge>
               </div>
             </div>
           </div>
@@ -83,16 +85,16 @@ export default function EmployeeDetailPage() {
         <Card className="p-6">
           <h3 className="font-semibold text-slate-700 mb-2">Contact Information</h3>
           <div className="divide-y divide-slate-50">
-            <InfoRow icon={Mail} label="Email" value={employee.email} />
-            <InfoRow icon={Phone} label="Phone" value={employee.phone} />
+            <InfoRow icon={Mail} label="Email" value={employee?.user?.email} />
+            <InfoRow icon={Phone} label="Phone" value={employee?.user?.phone} />
           </div>
         </Card>
         <Card className="p-6">
           <h3 className="font-semibold text-slate-700 mb-2">Job Details</h3>
           <div className="divide-y divide-slate-50">
             <InfoRow icon={Building2} label="Department" value={employee.department} />
-            <InfoRow icon={Briefcase} label="Job Title" value={employee.job_title} />
-            <InfoRow icon={Calendar} label="Date Joined" value={employee.date_joined ? new Date(employee.date_joined).toLocaleDateString() : null} />
+            <InfoRow icon={Briefcase} label="Job Title" value={employee.designation} />
+            <InfoRow icon={Calendar} label="Date Joined" value={employee.joining_date ? new Date(employee.joining_date).toLocaleDateString() : null} />
             <InfoRow icon={DollarSign} label="Salary" value={employee.salary ? `₹${Number(employee.salary).toLocaleString()}` : null} />
           </div>
         </Card>

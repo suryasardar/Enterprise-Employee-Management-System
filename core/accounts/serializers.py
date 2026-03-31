@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
+from django.db.models import Q
 from .models import User
 
 
@@ -16,15 +17,28 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    login    = serializers.CharField()        # accepts username OR email
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        user = authenticate(username=data['username'], password=data['password'])
+        login    = data.get('login', '').strip()
+        password = data.get('password', '')
+
+        # Find user by username or email
+        try:
+            user_obj = User.objects.get(Q(username=login) | Q(email=login))
+        except User.DoesNotExist:
+            raise serializers.ValidationError("No account found with this username or email.")
+        except User.MultipleObjectsReturned:
+            raise serializers.ValidationError("Multiple accounts found. Please use your username.")
+
+        # Verify password
+        user = authenticate(username=user_obj.username, password=password)
         if not user:
-            raise serializers.ValidationError("Invalid credentials.")
+            raise serializers.ValidationError("Incorrect password.")
         if not user.is_active:
-            raise serializers.ValidationError("Account is disabled.")
+            raise serializers.ValidationError("This account has been disabled.")
+
         data['user'] = user
         return data
 
