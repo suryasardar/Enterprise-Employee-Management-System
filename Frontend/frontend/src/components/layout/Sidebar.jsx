@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Users, UserPlus, Search,
   LogOut, Settings, ChevronRight, Building2
 } from 'lucide-react';
+ 
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -11,7 +12,7 @@ const navItems = [
   { to: '/employees/new', icon: UserPlus, label: 'Add Employee' },
   { to: '/employees/search', icon: Search, label: 'Search' },
   { to: '/settings', icon: Settings, label: 'Settings' },
-  {to :'/register', icon: UserPlus, label: 'Register User'},
+  { to: '/register', icon: UserPlus, label: 'Register User' },
 ];
 
 export default function Sidebar() {
@@ -23,9 +24,16 @@ export default function Sidebar() {
     navigate('/login');
   };
 
+  /** * LOGIC: If the user is an employee, show an empty array.
+   * Otherwise, show all navItems.
+   */
+  const filteredNavItems = user?.role?.toLowerCase() === 'employee' 
+    ? [] 
+    : navItems;
+
   return (
     <aside className="w-64 min-h-screen bg-blue-900 flex flex-col shadow-2xl">
-      {/* Logo */}
+      {/* Logo Section */}
       <div className="flex items-center gap-3 px-6 py-6 border-b border-blue-700">
         <div className="w-9 h-9 bg-blue-400 rounded-xl flex items-center justify-center shadow">
           <Building2 size={20} className="text-white" />
@@ -37,7 +45,7 @@ export default function Sidebar() {
       </div>
 
       {/* User Info */}
-      <div className="px-6 py-4 border-b border-blue-700">
+      {/* <div className="px-6 py-4 border-b border-blue-700">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
             {user?.name?.[0]?.toUpperCase() || 'U'}
@@ -47,26 +55,32 @@ export default function Sidebar() {
             <p className="text-blue-300 text-xs capitalize">{user?.role || 'employee'}</p>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Nav Links */}
       <nav className="flex-1 px-4 py-4 space-y-1">
-        {navItems.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all group
-              ${isActive
-                ? 'bg-blue-500 text-white shadow-lg shadow-blue-900/50'
-                : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`
-            }
-          >
-            <Icon size={18} />
-            <span className="flex-1">{label}</span>
-            <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-          </NavLink>
-        ))}
+        {filteredNavItems.length > 0 ? (
+          filteredNavItems.map(({ to, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all group
+                ${isActive
+                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-900/50'
+                  : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`
+              }
+            >
+              <Icon size={18} />
+              <span className="flex-1">{label}</span>
+              <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+            </NavLink>
+          ))
+        ) : (
+          <div className="px-4 py-2 text-blue-400 text-xs italic">
+            No access permissions
+          </div>
+        )}
       </nav>
 
       {/* Logout */}

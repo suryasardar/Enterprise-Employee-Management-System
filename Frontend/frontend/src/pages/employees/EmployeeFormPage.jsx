@@ -95,7 +95,7 @@ export default function EmployeeFormPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input label="Username" placeholder="alice_dev" value={form.username} onChange={set('username')} required />
-            <Input label="Employee ID" placeholder="EMP001" value={form.employee_id} onChange={set('employee_id')} required />
+            {/* <Input label="Employee ID" placeholder="EMP001" value={form.employee_id} onChange={set('employee_id')} required /> */}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
