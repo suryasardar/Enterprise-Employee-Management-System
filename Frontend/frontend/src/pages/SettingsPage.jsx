@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { authAPI } from '../api/auth';
 import { Card, Input, Button, Alert } from '../components/ui';
 import { Lock } from 'lucide-react';
+// import { useAuth } from '../context/AuthContext';
 
 export default function SettingsPage() {
+  
   const [form, setForm] = useState({ old_password: '', new_password: '', confirm_password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
-
+  
   const handleChangePassword = async (e) => {
     e.preventDefault();
     if (form.new_password !== form.confirm_password) {

@@ -25,7 +25,7 @@ class CreateEmployeeSerializer(serializers.Serializer):
     phone     = serializers.CharField(max_length=20, required=False, allow_blank=True)
 
     # Profile fields
-    employee_id       = serializers.CharField(max_length=20)
+    # employee_id       = serializers.CharField(max_length=20)
     department        = serializers.CharField(max_length=100)
     designation       = serializers.CharField(max_length=100)
     joining_date      = serializers.DateField()
@@ -52,18 +52,35 @@ class CreateEmployeeSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
-        profile_fields = ['employee_id', 'department', 'designation',
-                          'joining_date', 'reporting_manager', 'status']
+        # 1. Extract profile data
+        profile_fields = ['department', 'designation', 'joining_date', 'reporting_manager', 'status']
         profile_data = {f: validated_data.pop(f) for f in profile_fields if f in validated_data}
 
+        # 2. Create the User first
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
             role=validated_data.get('role', 'Employee'),
             phone=validated_data.get('phone', ''),
+             )
+
+        # 3. AUTO-GENERATE EMPLOYEE ID (Format: ARKA + random/sequential number)
+        # Using a count + 1000 approach for a clean look (ARKA1001, ARKA1002...)
+        count = EmployeeProfile.objects.count() + 1
+        generated_id = f"ARKA{1000 + count}" 
+        
+        # Ensure it's unique just in case a record was deleted
+        while EmployeeProfile.objects.filter(employee_id=generated_id).exists():
+            count += 1
+            generated_id = f"ARKA{1000 + count}"
+
+        # 4. Create the Profile with the generated ID
+        profile = EmployeeProfile.objects.create(
+            user=user, 
+            employee_id=generated_id, 
+            **profile_data
         )
-        profile = EmployeeProfile.objects.create(user=user, **profile_data)
         return profile
 
 
