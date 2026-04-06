@@ -13,6 +13,13 @@ const navItems = [
   { to: '/employees/search', icon: Search, label: 'Search' },
   { to: '/settings', icon: Settings, label: 'Settings' },
   { to: '/register', icon: UserPlus, label: 'Register User' },
+  { icon: '👤', label: 'My Profile',  to: '/my-profile'    },
+  { icon: '📅', label: 'Attendance',  to: '/my-attendance'  },
+  { icon: '🌴', label: 'Leave',       to: '/my-leave'       },
+  { icon: '💰', label: 'Payroll',     to: '/my-payroll'     },
+  { icon: '🎉', label: 'Holidays',    to: '/my-holidays'    },
+  { icon: '📄', label: 'Documents',   to: '/my-documents'   },
+  { icon: '⚙️', label: 'Settings',   to: '/settings'        },
 ];
 
 export default function Sidebar() {
